@@ -1,0 +1,69 @@
+name: Build Veyra OS Live ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'live-build/**'
+      - 'branding/**'
+      - '.github/workflows/build-iso.yml'
+
+jobs:
+  build:
+    name: Build Debian Live ISO
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Debian Live Build Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debootstrap \
+            live-build \
+            syslinux \
+            syslinux-utils \
+            isolinux \
+            xorriso \
+            squashfs-tools
+
+      - name: Configure and Build Live ISO
+        working-directory: live-build
+        run: |
+          # Ensure execution bits are set
+          chmod +x auto/*
+          
+          # Clean prior configurations
+          sudo lb clean --purge
+          
+          # Execute configuration
+          sudo lb config
+          
+          # Build bootable ISO
+          sudo lb build
+
+      - name: Verify ISO Image Generation
+        working-directory: live-build
+        run: |
+          ls -lh *.iso
+          ISO_FILE=$(ls *.iso | head -n 1)
+          if [ -z "$ISO_FILE" ]; then
+            echo "::error::No ISO was produced by live-build!"
+            exit 1
+          fi
+          echo "BUILT_ISO=$ISO_FILE" >> $GITHUB_ENV
+          sha256sum "$ISO_FILE" > "$ISO_FILE.sha256"
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: veyra-os-live-amd64
+          path: |
+            live-build/*.iso
+            live-build/*.sha256
+          retention-days: 14
