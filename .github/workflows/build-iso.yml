@@ -13,7 +13,7 @@ on:
 jobs:
   build:
     name: Build Debian Live ISO
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
       contents: write
@@ -22,76 +22,126 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Install Debian Live Build Toolchain
+      - name: Configure and Build Live ISO (Native Debian Bookworm Container)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            debootstrap \
-            live-build \
-            syslinux \
-            syslinux-utils \
-            isolinux \
-            xorriso \
-            squashfs-tools \
-            syslinux-common
+          docker run --privileged --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace/live-build \
+            debian:bookworm bash -c "
+              set -ex
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                live-build \
+                debootstrap \
+                syslinux \
+                syslinux-utils \
+                syslinux-common \
+                isolinux \
+                xorriso \
+                squashfs-tools \
+                mtools
+              chmod +x auto/*
+              lb clean --purge
+              lb config
+              lb build
+            "
 
-      - name: Configure and Build Live ISO
+      - name: Inspect Workspace and Locate ISO
+        id: locate_iso
         working-directory: live-build
         run: |
-          chmod +x auto/*
-          sudo lb clean --purge
-          sudo lb config
-          mkdir -p config/includes.chroot/usr/bin
-          cp /usr/bin/isohybrid config/includes.chroot/usr/bin/ || true
-          sudo lb build
+          # Restore workspace ownership from root to runner
+          sudo chown -R $USER:$USER "${{ github.workspace }}"
 
-      - name: Verify ISO Image Generation
-        id: verify
-        working-directory: live-build
-        run: |
-          ls -lh *.iso
-          ISO_FILE=$(ls *.iso | head -n 1)
-          if [ -z "$ISO_FILE" ]; then
-            echo "::error::No ISO was produced by live-build!"
+          echo "=== Post-build diagnostics ==="
+          echo "Working directory: $(pwd)"
+          echo "Directory listing (live-build):"
+          ls -la
+
+          echo "Searching for generated ISO files across workspace..."
+          FOUND_ISO=$(find "${{ github.workspace }}" -type f \( -name "*.iso" -o -name "*.hybrid.iso" \) | head -n 1)
+
+          if [ -z "$FOUND_ISO" ] || [ ! -f "$FOUND_ISO" ]; then
+            echo "::error::No ISO file found in workspace after live-build!"
+            echo "Inspecting live-build subdirectories:"
+            find "${{ github.workspace }}/live-build" -maxdepth 2 || true
             exit 1
           fi
-          echo "iso_file=$ISO_FILE" >> $GITHUB_OUTPUT
-          sha256sum "$ISO_FILE" > "$ISO_FILE.sha256"
+
+          echo "Discovered ISO image: $FOUND_ISO"
+          ls -lh "$FOUND_ISO"
+
+          # Verify minimum expected size for live desktop ISO (> 200MB)
+          FILE_SIZE=$(stat -c%s "$FOUND_ISO")
+          if [ "$FILE_SIZE" -lt 200000000 ]; then
+            echo "::error::Generated ISO is suspiciously small ($FILE_SIZE bytes)!"
+            exit 1
+          fi
+
+          # Standardize filename for release and artifact distribution
+          STANDARDIZED_ISO="${{ github.workspace }}/live-build/veyra-os-live-amd64.hybrid.iso"
+          STANDARDIZED_SHA="${STANDARDIZED_ISO}.sha256"
+
+          if [ "$FOUND_ISO" != "$STANDARDIZED_ISO" ]; then
+            mv "$FOUND_ISO" "$STANDARDIZED_ISO"
+          fi
+
+          # Generate SHA-256 checksum
+          cd "${{ github.workspace }}/live-build"
+          sha256sum "$(basename "$STANDARDIZED_ISO")" > "$(basename "$STANDARDIZED_SHA")"
+
+          echo "SHA256 Checksum verification:"
+          cat "$(basename "$STANDARDIZED_SHA")"
+
+          # Export step outputs for downstream consumption
+          echo "iso_path=$STANDARDIZED_ISO" >> $GITHUB_OUTPUT
+          echo "sha_path=$STANDARDIZED_SHA" >> $GITHUB_OUTPUT
+          echo "iso_filename=$(basename "$STANDARDIZED_ISO")" >> $GITHUB_OUTPUT
+          echo "sha_filename=$(basename "$STANDARDIZED_SHA")" >> $GITHUB_OUTPUT
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
           name: veyra-os-live-amd64
           path: |
-            live-build/*.iso
-            live-build/*.sha256
+            ${{ steps.locate_iso.outputs.iso_path }}
+            ${{ steps.locate_iso.outputs.sha_path }}
           retention-days: 14
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Publish GitHub Release Assets
         if: github.ref == 'refs/heads/main'
-        with:
-          tag_name: v0.1.0-alpha
-          name: "Veyra OS v0.1.0-alpha (Live USB)"
-          body: |
-            ## Veyra OS v0.1.0-alpha
-            *A calmer way to compute.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="v0.1.0-alpha"
+          ISO_FILE="${{ steps.locate_iso.outputs.iso_path }}"
+          SHA_FILE="${{ steps.locate_iso.outputs.sha_path }}"
 
-            ### 🚀 About this Build
-            - **Base OS:** Debian 12 (Bookworm) `amd64`
-            - **Desktop Environment:** KDE Plasma (Veyra Midnight Navy & Teal aesthetic)
-            - **Window Controls:** Left-aligned macOS traffic lights (`Close, Minimize, Maximize`)
-            - **Target:** HP Folio 13 & standard x86_64 PCs
-            - **Mode:** Safe non-destructive Live USB (RAM overlay, internal disks untouched)
-            - **Default User:** `veyra`
+          echo "Publishing assets to GitHub Release ($TAG_NAME)..."
 
-            ### 📥 Download & Verification
-            Download `live-image-amd64.hybrid.iso` below and verify its checksum:
-            ```bash
-            sha256sum -c live-image-amd64.hybrid.iso.sha256
-            ```
-          files: |
-            live-build/*.iso
-            live-build/*.sha256
-          draft: false
-          prerelease: true
+          # Ensure the release exists or create it
+          if ! gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release create "$TAG_NAME" \
+              --title "Veyra OS v0.1.0-alpha (Live USB)" \
+              --prerelease \
+              --notes "## Veyra OS v0.1.0-alpha (Live USB)
+          *A calmer way to compute.*
+
+          ### 🚀 System Overview
+          - **Base OS:** Debian 12 (Bookworm) amd64
+          - **Desktop Foundation:** KDE Plasma 5.27 LTS
+          - **Window Decorator:** Left-aligned macOS traffic lights (Close, Minimize, Maximize)
+          - **Design Tokens:** Midnight Navy (#172337) and Muted Teal (#69B7A0)
+          - **Target Device:** HP Folio 13 & standard x86_64 hardware
+          - **Safety Mode:** Non-destructive Live USB (RAM-only overlay, internal drives untouched)
+          - **Default Account:** \`veyra\`
+
+          ### 📥 Verification
+          \`\`\`bash
+          sha256sum -c veyra-os-live-amd64.hybrid.iso.sha256
+          \`\`\`"
+          fi
+
+          # Upload with --clobber to safely overwrite and update assets on repeated runs
+          gh release upload "$TAG_NAME" "$ISO_FILE" "$SHA_FILE" --clobber
+          echo "Assets successfully published to release $TAG_NAME!"
