@@ -1,0 +1,16 @@
+[General]
+ColorScheme=VeyraDark
+Name=Veyra Dark
+font=Inter,10,-1,5,50,0,0,0,0,0
+fixed=Hack,10,-1,5,50,0,0,0,0,0
+smallestReadableFont=Inter,8,-1,5,50,0,0,0,0,0
+toolBarFont=Inter,10,-1,5,50,0,0,0,0,0
+menuFont=Inter,10,-1,5,50,0,0,0,0,0
+activeFont=Inter,10,-1,5,63,0,0,0,0,0
+
+[KDE]
+widgetStyle=Breeze
+ShowDeleteCommand=false
+
+[Icons]
+Theme=breeze-dark
