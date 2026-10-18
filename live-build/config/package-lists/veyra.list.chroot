@@ -1,0 +1,77 @@
+# Core Linux & System Runtime
+linux-image-amd64
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+sudo
+locales
+
+# Essential Non-Free Firmware for HP Folio 13 & modern laptops
+firmware-linux
+firmware-linux-free
+firmware-linux-nonfree
+firmware-misc-nonfree
+firmware-iwlwifi
+firmware-realtek
+firmware-atheros
+intel-microcode
+
+# Networking & Connectivity
+network-manager
+network-manager-gnome
+plasma-nm
+bluez
+plasma-widgets-addons
+pulseaudio-module-bluetooth
+rfkill
+curl
+wget
+ca-certificates
+
+# Display Server & Display Manager (SDDM)
+xorg
+xserver-xorg-video-all
+xserver-xorg-input-all
+xserver-xorg-input-synaptics
+xserver-xorg-input-libinput
+sddm
+sddm-theme-breeze
+
+# Desktop Environment Foundation (KDE Plasma Minimal/Clean)
+plasma-desktop
+plasma-workspace
+plasma-workspace-wayland
+kwin-x11
+kwin-wayland
+kwin-addons
+plasma-pa
+kscreen
+powerdevil
+polkit-kde-agent-1
+breeze
+breeze-cursor-theme
+breeze-icon-theme
+fonts-inter
+fonts-noto-core
+fonts-noto-color-emoji
+
+# Core Desktop Utilities & Applications (as specified in Veyra design)
+firefox-esr
+dolphin
+konsole
+kate
+kcalc
+gwenview
+vlc
+plasma-systemmonitor
+krunner
+latte-dock
+
+# Compression & Filesystem Support
+p7zip-full
+unzip
+tar
+ntfs-3g
+dosfstools
+exfat-fuse
