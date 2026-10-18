@@ -13,7 +13,7 @@ lb config noauto \
     --mirror-bootstrap "http://deb.debian.org/debian" \
     --mirror-chroot "http://deb.debian.org/debian" \
     --binary-images iso-hybrid \
-    --bootloader syslinux,grub-efi \
+    --bootloaders syslinux,grub-efi \
     --debian-installer false \
     --iso-application "Veyra OS Live" \
     --iso-publisher "Veyra Project" \
