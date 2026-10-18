@@ -7,6 +7,12 @@ systemd-sysv
 sudo
 locales
 
+# Bootloader & ISO Hybrid Packaging Tools
+syslinux
+syslinux-utils
+syslinux-common
+isolinux
+
 # Essential Non-Free Firmware for HP Folio 13 & modern laptops
 firmware-linux
 firmware-linux-free
