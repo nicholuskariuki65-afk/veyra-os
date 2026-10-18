@@ -32,7 +32,8 @@ jobs:
             syslinux-utils \
             isolinux \
             xorriso \
-            squashfs-tools
+            squashfs-tools \
+            syslinux-common
 
       - name: Configure and Build Live ISO
         working-directory: live-build
