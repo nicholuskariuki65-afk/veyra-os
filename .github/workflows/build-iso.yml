@@ -41,6 +41,8 @@ jobs:
           chmod +x auto/*
           sudo lb clean --purge
           sudo lb config
+          mkdir -p config/includes.chroot/usr/bin
+          cp /usr/bin/isohybrid config/includes.chroot/usr/bin/ || true
           sudo lb build
 
       - name: Verify ISO Image Generation
