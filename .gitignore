@@ -1,0 +1,24 @@
+# Live Build Artifacts
+.build/
+binary/
+chroot/
+cache/
+*.iso
+*.hybrid.iso
+*.img
+*.tar
+*.packages
+*.log
+
+# Editor & System Files
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporary build caches
+/tmp/
+*.tmp
