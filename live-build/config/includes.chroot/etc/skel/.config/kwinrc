@@ -1,0 +1,7 @@
+[org.kde.kdecoration2]
+BorderSize=None
+ButtonsOnLeft=XIA
+ButtonsOnRight=
+CloseOnDoubleClickOnMenu=false
+ShowToolTips=true
+ThemeName=Breeze
